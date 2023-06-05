@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       aws-default-region:
-        required: true
+        required: false
         type: string
         default: "eu-central-1"
       
