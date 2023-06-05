@@ -16,7 +16,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: src
     env:
       AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
     
