@@ -5,10 +5,21 @@ on:
       python-version:
         required: true
         type: string
+      aws-default-region:
+        required: false
+        type: string
+        default: "eu-central-1"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: src
+    env:
+      AWS_DEFAULT_REGION: "eu-central-1"  
+    
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ inputs.python-version }}
