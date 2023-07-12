@@ -1,56 +1,74 @@
-name: Python Workflow
+name: Terraform Workflow
+
 on:
   workflow_call:
     inputs:
-      python-version:
+      terraform-version:
         required: true
         type: string
       aws-default-region:
         required: false
         type: string
         default: "eu-central-1"
-      working-directory:
-        required: false
-        type: string
-      test-directory:
-        required: false
-        type: string
+      
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ inputs.working-directory }}
-    env:
-      AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
-    strategy:
-      matrix:
-        python-version: ["3.10"]
+    
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@master
+      - uses: terraform-linters/setup-tflint@v3
+        name: Setup TFLint
         with:
-          python-version: ${{ inputs.python-version }}
-      - name: Install dependencies
+          tflint_version: v0.46.0      
+      - name: TFLint
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pylint pep8 pytest
-      - name: Analysing the code with pylint
-        continue-on-error: true # allow failures, remove it in the future      
+          tflint -f compact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}  # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
+
+  fmt:
+    name: fmt
+    runs-on: ubuntu-20.04
+    container:
+      image: hashicorp/terraform:latest
+    steps:
+      - uses: actions/checkout@master
+      - run: terraform fmt --recursive -check=true
+
+  validate:
+    name: validate
+    runs-on: ubuntu-20.04
+    container:
+      image: hashicorp/terraform:latest
+    steps:
+      - uses: actions/checkout@master
+      - name: terraform validate
         run: |
-          pylint $(git ls-files '*.py')
-      - name: Analysing the code with pep8
-        continue-on-error: true # allow failures, remove it in the future      
-        run: |
-          pep8 $(git ls-files '*.py')  
-      - name: Test with pytest
-        continue-on-error: false
-        # Note: pytest will only automatically discover and run tests in files 
-        # that either start or end with "test" (or "tests"). Make sure your test 
-        # files follow this naming convention. Same for test functions and methods.
-        run: |
-          pytest ${{ inputs.test-directory }} -v
+          terraform init
+          terraform validate -no-color
+        env:
+          AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
+
+  tfsec:
+    name: TFSec
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@master
+      - name: TFSec
+        uses: triat/terraform-security-scan@v3.0.3
+        with:
+          tfsec_actions_comment: false
+  
+  # tfdocs:
+  #   name: TFDocs
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@master
+  #     - name: TFDocs
+  #       uses: terraform-docs/gh-actions@v1.0.0
+  #       with:
+  #         working-dir: ./
+  #         fail-on-diff: true
