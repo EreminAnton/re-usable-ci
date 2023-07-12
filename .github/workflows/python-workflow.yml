@@ -9,6 +9,16 @@ on:
         required: false
         type: string
         default: "eu-central-1"
+      working-directory:
+        required: false
+        type: string
+      test-directory:
+        required: false
+        type: string
+      dependency-file:
+        required: false
+        type: string
+        default: "requirements.txt"
 
 jobs:
   build:
@@ -16,7 +26,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: src
+        working-directory: ${{ inputs.working-directory }}
     env:
       AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
     strategy:
@@ -31,8 +41,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r ${{ inputs.dependency-file }}
           pip install pylint pep8 pytest
+        
       - name: Analysing the code with pylint
         continue-on-error: true # allow failures, remove it in the future      
         run: |
@@ -43,8 +54,8 @@ jobs:
           pep8 $(git ls-files '*.py')  
       - name: Test with pytest
         continue-on-error: false
+        # Note: pytest will only automatically discover and run tests in files 
+        # that either start or end with "test" (or "tests"). Make sure your test 
+        # files follow this naming convention. Same for test functions and methods.
         run: |
-          # Note: pytest will only automatically discover and run tests in files 
-          # that either start or end with "test" (or "tests"). Make sure your test 
-          # files follow this naming convention.
-          pytest tests/ -v
+          pytest ${{ inputs.test-directory }} -v
